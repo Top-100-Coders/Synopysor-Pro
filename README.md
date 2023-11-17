@@ -1,2 +1,2 @@
 # Synopysor-Pro
-A Python information retrival and summarisation application
+A Python information retrival and summarization application
