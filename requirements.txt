@@ -3,3 +3,5 @@ streamlit~=1.28.2
 numpy~=1.26.2
 requests~=2.31.0
 streamlit-scrollable-textbox
+youtube-search
+youtube-transcript-api
