@@ -9,28 +9,17 @@ from youtube_search import YoutubeSearch
 from youtube_transcript_api import YouTubeTranscriptApi
 
 
-# import torch
-# from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-# tokenizer = AutoTokenizer.from_pretrained("t5-base")
-
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-# device = torch.device("cpu")
-# model = AutoModelForSeq2SeqLM.from_pretrained(
-#     "t5-base",
-#     return_dict=True)
-# model.to(device)
-
-# API_KEY = config('API_KEY', cast=str)
-
-
-def timeit(func):
-    def wrapper(*args, **kwargs):
-        start = time.time()
-        result = func(*args, **kwargs)
-        print(time.time() - start)
-        return result
-
-    return wrapper
+def reset_session(st):
+    """
+    Function to reset the session state
+    :param st:
+    :return:
+    """
+    st.session_state.my_content_ids = []
+    st.session_state.my_thumbnails = []
+    st.session_state.my_raw_summary = []
+    st.session_state.my_summary = None
+    st.session_state.my_prompt = None
 
 
 # @timeit
@@ -54,6 +43,11 @@ def get_transcript_for_video(video_id):
 
 # @lru_cache(maxsize=None)
 def get_yt_transcript(video_ids):
+    """
+    Function to get transcripts from YouTube by multiprocessing for faster processing
+    :param video_ids:
+    :return:
+    """
     content = []
     video_ids = tuple(video_ids)
     with ProcessPoolExecutor() as executor:
@@ -85,28 +79,6 @@ def get_topic_data(topic: str, quantity: int = 2):
     results = list(filter(lambda x: x['duration'] > 1, results))
     results.sort(key=operator.itemgetter('views'), reverse=True)
     return results[:quantity]
-
-
-# def get_summary(content):
-#     inputs = tokenizer.encode(
-#         "summarize: " + content,
-#         return_tensors="pt",
-#         max_length=2048,
-#         truncation=True).to(device)
-#
-#     summary_ids = model.generate(inputs, max_length=2048, min_length=2000, length_penalty=5.0, num_beams=5,
-#                                  early_stopping=True)
-#     summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
-#     return summary
-#
-#
-# def process_summary(summaries):
-#     content = ''
-#     summaries = tuple(summaries)
-#
-#     for summary in summaries:
-#         content += f" {get_summary(summary)}\n"
-#     return content
 
 
 def chunk_summary(content):

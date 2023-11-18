@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit_scrollable_textbox as sst
 
-from utils import get_topic_data, get_yt_transcript, request_summary_from_gpt3, request_qa_from_gpt3
+from utils import get_topic_data, get_yt_transcript, request_summary_from_gpt3, request_qa_from_gpt3, reset_session
 
 if 'my_api' not in st.session_state:
     st.session_state.my_api = None
@@ -9,8 +9,6 @@ if 'my_topic' not in st.session_state:
     st.session_state.my_topic = None
 if 'my_prompt' not in st.session_state:
     st.session_state.my_prompt = None
-if 'my_list' not in st.session_state:
-    st.session_state.my_list = []
 if 'my_summary' not in st.session_state:
     st.session_state.my_summary = None
 if 'my_thumbnails' not in st.session_state:
@@ -45,6 +43,7 @@ if st.session_state.my_api_key is not None and st.session_state.my_api_key != ''
         wcol1, wcol2 = st.columns(2)
         wcol2 = st.slider("Number of contents to be obtained", min_value=2, max_value=50, value=4, step=1)
         wcol1 = st.button("Obtain contents", type="primary")
+        # reset_session(st)
         if wcol1:
             with st.spinner("Searching for the contents..."):
                 results = get_topic_data(st.session_state.my_topic, 4 if wcol2 is None else wcol2)
@@ -62,6 +61,7 @@ if st.session_state.my_api_key is not None and st.session_state.my_api_key != ''
                 col.image(st.session_state.my_thumbnails[img_grid.index(col)])
 
 if (st.session_state.my_content_ids is not None
+        and st.session_state.my_content_ids != []
         and st.session_state.my_summary is None):
     st.divider()
     st.subheader("📋 Summarize")
