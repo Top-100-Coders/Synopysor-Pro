@@ -82,7 +82,7 @@ if (st.session_state.my_content_ids is not None
 
 if st.session_state.my_summary is not None and st.session_state.my_summary != '':
     st.divider()
-    st.title("💬 Synopysor-Bot")
+    st.subheader("💬 Synopysor-Bot")
     if "messages" not in st.session_state:
         st.session_state["messages"] = [{ "role": "assistant", "content": "How can I help you?" }]
     for msg in st.session_state.messages:
