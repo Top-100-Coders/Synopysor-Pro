@@ -42,7 +42,7 @@ if st.session_state.my_api_key is not None and st.session_state.my_api_key != ''
     st.session_state.my_topic = topic_input
     if st.session_state.my_topic is not None and st.session_state.my_topic != '':
         wcol1, wcol2 = st.columns(2)
-        wcol2 = st.slider("Number of contents to be obtained", min_value=2, max_value=10, value=4, step=1)
+        wcol2 = st.slider("Number of contents to be obtained", min_value=2, max_value=50, value=4, step=1)
         wcol1 = st.button("Obtain contents", type="primary")
         if wcol1:
             with st.spinner("Searching for the contents..."):
