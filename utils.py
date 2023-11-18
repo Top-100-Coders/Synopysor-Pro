@@ -1,17 +1,17 @@
 import operator
 import time
-from decouple import config
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
-# import torch
+
 from openai import OpenAI
-# from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-
-# tokenizer = AutoTokenizer.from_pretrained("t5-base")
-
 from youtube_search import YoutubeSearch
 from youtube_transcript_api import YouTubeTranscriptApi
+
+
+# import torch
+# from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+# tokenizer = AutoTokenizer.from_pretrained("t5-base")
 
 # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # device = torch.device("cpu")
@@ -49,8 +49,6 @@ def get_transcript_for_video(video_id):
             content = content.replace('\n', ' ').replace('[Music]', ' ')
     except Exception:
         pass
-    if len(content) >= 4000:
-        content = content[:3900]
     return content
 
 
@@ -66,9 +64,9 @@ def get_yt_transcript(video_ids):
     return content
 
 
-def get_topic_data(topic: str):
+def get_topic_data(topic: str, quantity: int = 2):
     """
-    This function is to get the topic-based details using the Youtube search function
+    This function is to get the topic-based details using the YouTube search function
     :topic: str
     :return:
     """
@@ -76,13 +74,17 @@ def get_topic_data(topic: str):
     for result in results:
         result['views'] = int(result['views'].replace(' views', '').replace(',', ''))
         result['thumbnails'] = result['thumbnails'][1] if len(result['thumbnails']) > 1 else result['thumbnails'][0]
+        try:
+            result['duration'] = int(result['duration'].split(':')[0])
+        except ValueError:
+            result['duration'] = 0
         del result['long_desc']
         del result['channel']
-        del result['duration']
         del result['publish_time']
         del result['url_suffix']
+    results = list(filter(lambda x: x['duration'] > 1, results))
     results.sort(key=operator.itemgetter('views'), reverse=True)
-    return results[:2]
+    return results[:quantity]
 
 
 # def get_summary(content):
@@ -115,39 +117,62 @@ def chunk_summary(content):
     return prompt
 
 
+def multiproc_summarizer(data):
+    content = []
+    data = tuple(data)
+    with ProcessPoolExecutor() as executor:
+        results = list(executor.map(request_summary_from_gpt3, data))
+
+    for result in results:
+        content.append(f"{result}\n")
+    return content
+
+
 def request_summary_from_gpt3(key_, topic, content, stage):
     """
     Function to request summary from GPT-3
-    :param key_: API  key
-    :param topic:
-    :param content:
-    :param stage:
+    :param key_: API key of OpenAI GPT-3
+    :param topic: Topic of the content
+    :param content: Content to be summarized
+    :param stage: Stage of the summarization, 1 for initial and 2 for final
     :return:
     """
-    content = content[:3400]
-    base_prompt_initial = f"""
-    **Prompt for Summarization**
-    **Description:**
-    You are a highly capable AI language model with expertise in content summarization and contextual understanding. 
-    Your proficiency extends to crafting descriptive yet comprehensible summaries. In this scenario, your task is to 
-    generate a concise summary of the content from one of the top 10 YouTube videos about {topic} to be provided to you.
-    Only the content of the video is to be summarized. The summary should be descriptive enough to be understood by
-    anyone. The content of the video is provided below.
-        ---     
-        **Content:** {content}
-        ---
-    """
-    base_prompt_final = f"""
-        You are a very intelligent AI language model tasked with summarizing information about anything. Your are also an 
-        expert in formatting specialising in understanding the context of the content and summarizing it in a concise manner.
-        You are also very good at writing summaries in a very descriptive but enough to be understood by anyone. For the
-        topic of {topic}, you are tasked with summarizing the top 10 videos from YouTube. You would be provided with a 
-        combined content of all the videos. You are also provided with a summary of the content. Generate a summary of the
-        content provided in the prompt ahead.
-        ---     
-        **Content:** {content}
-        ---
-    """
+    if len(content) >= 16385:
+        content = content[:15500]
+    messages_initial = [
+        { "role": "system",
+          "content": f"The AI system is designed to intelligently summarize information on a given topic, specializing "
+                     f"in contextual understanding and descriptive formatting. For the specific task at hand, it is "
+                     f"focused on generating a concise summary of the content from a YouTube video about {topic}. The AI "
+                     f"model excels at crafting summaries that are both descriptive and easily understandable." },
+        { "role": "user",
+          "content": f"You are a user seeking a detailed and well-structured summary of content related to {topic} from "
+                     f"a YouTube video. The AI language model is proficient in understanding the context and summarizing "
+                     f"information in a descriptive yet clear manner. Provide the content of the video, and the model "
+                     f"will generate a summary based on the given information." },
+        { "role": "assistant", "content": f"**Content:** {content}" },
+        ]
+
+    messages_final = [
+        { "role": "system",
+          "content": f"The AI system is designed to intelligently summarize information on a given topic, specializing in"
+                     f" contextual understanding and descriptive formatting. For the specific topic of {topic}, "
+                     f"it is tasked with summarizing content from the top 10 YouTube videos. The system receives a "
+                     f"combined content of all videos and a pre-existing summary, aiming to generate a concise and "
+                     f"descriptive summary in response." },
+        { "role": "user",
+          "content": f"You are a user seeking a detailed and well-structured summary of content related to {topic}"
+                     f". The AI language model is proficient in understanding the context and "
+                     f"summarizing information in a descriptive yet clear manner. Provide the combined content of the "
+                     f"videos, and the model will generate a summary based on the given information." },
+        { "role": "assistant",
+          "content": f"You are a very intelligent AI language model with expertise in summarizing information and "
+                     f"formatting content contextually. Specifically tasked with summarizing the textual transcriptions"
+                     f"from YouTube videos on {topic}, you are provided with combined pre-existing summaries. Your goal "
+                     f"is to generate a concise and descriptive summary that captures the key points from the provided "
+                     f"information." },
+        { "role": "user", "content": f"Here is the content for summarization:\n{content}" },
+        ]
 
     # print(len(base_prompt_initial))
     # print(len(base_prompt_final))
@@ -157,12 +182,7 @@ def request_summary_from_gpt3(key_, topic, content, stage):
         )
     try:
         chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": base_prompt_final if stage == 2 else base_prompt_initial,
-                    }
-                ],
+            messages=messages_final if stage == 2 else messages_initial,
             model="gpt-3.5-turbo",
             )
         return str(chat_completion.choices[0].message.content)
@@ -179,35 +199,29 @@ def request_qa_from_gpt3(key_, topic, summary, prompt):
     :param prompt:
     :return:
     """
-    base_prompt_final = f"""
-        You are a very intelligent AI language model tasked with question and answering about anything provided as 
-        summary and prompt. Your are also an expert in formatting specialising in understanding the context of the
-        content and answering the questions in a concise manner. Make sure to answer the questions in a very descriptive
-        way and if the answer to the question could not be determined with the information provided, answer it with a
-        "No answer available" statement. You are tasked with answering the questions provided for the topic of {topic} 
-        whose content is given below. They must be answered only if the content is available in the provided content.
-        ---
-        **Content:** {summary}
-        ---
-        **Prompt:** {prompt}
-        ---
-    """
-
-    # print(len(base_prompt_initial))
-    # print(len(base_prompt_final))
 
     client = OpenAI(
         api_key=key_,
+        max_retries=3
         )
     try:
         chat_completion = client.chat.completions.create(
             messages=[
-                {
-                    "role": "user",
-                    "content": base_prompt_final,
-                    }
+                { "role": "system", "content": "You are a helpful and intelligent assistant who is designed to be a "
+                                               "knowledgeable resource for users. You are able to answer questions "
+                                               "about a given topic, and you are also able to provide a summary of "
+                                               "information on a given topic.You are provided with a summary of the "
+                                               "topic and a prompt with questions to answer. Your goal is to answer the "
+                                               "questions to the best of your ability, using the information provided in "
+                                               "the summary and only to answer from the summary. If the question doesn't "
+                                               "have any related terms or answers in the summary, then just reply you"
+                                               "don't know the answer. Make sure you never ask questions and only answer"
+                                               " questions" },
+                { "role": "user", "content": f"What is the {topic} about?" },
+                { "role": "assistant", "content": f"The content is about {summary}." },
+                { "role": "user", "content": f"Can you answer the question: {prompt}" }
                 ],
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo"
             )
         return str(chat_completion.choices[0].message.content)
     except Exception:
