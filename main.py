@@ -5,12 +5,12 @@ from utils import get_topic_data, get_yt_transcript, request_summary_from_gpt3, 
 
 if 'my_api' not in st.session_state:
     st.session_state.my_api = None
+if 'my_topic' not in st.session_state:
+    st.session_state.my_topic = None
 if 'my_prompt' not in st.session_state:
     st.session_state.my_prompt = None
 if 'my_list' not in st.session_state:
     st.session_state.my_list = []
-if 'my_topic' not in st.session_state:
-    st.session_state.my_topic = None
 if 'my_summary' not in st.session_state:
     st.session_state.my_summary = None
 if 'my_thumbnails' not in st.session_state:
@@ -19,6 +19,7 @@ if 'my_content_ids' not in st.session_state:
     st.session_state.my_content_ids = []
 if 'my_raw_summary' not in st.session_state:
     st.session_state.my_raw_summary = []
+
 
 st.markdown("<h1 style='text-align: center; color: red;'>Synopysor-Pro</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center; color: black;'>Content summarization tool</h4>", unsafe_allow_html=True)
@@ -61,7 +62,6 @@ if st.session_state.my_api_key is not None and st.session_state.my_api_key != ''
                 col.image(st.session_state.my_thumbnails[img_grid.index(col)])
 
 if (st.session_state.my_content_ids is not None
-        and st.session_state.my_content_ids != []
         and st.session_state.my_summary is None):
     st.divider()
     st.subheader("📋 Summarize")
@@ -76,9 +76,9 @@ if (st.session_state.my_content_ids is not None
     sst.scrollableTextbox(''.join(st.session_state.my_raw_summary), height=400)
 
     with st.spinner("Finalising summarised data..."):
-        final_summary = request_summary_from_gpt3(st.session_state.my_api_key, st.session_state.my_topic,
+        st.session_state.my_summary = request_summary_from_gpt3(st.session_state.my_api_key, st.session_state.my_topic,
                                                   ''.join(st.session_state.my_raw_summary), 2)
-    st.session_state.my_summary = final_summary
+    # st.session_state.my_summary = final_summary
 
 if st.session_state.my_summary is not None and st.session_state.my_summary != '':
     st.divider()
