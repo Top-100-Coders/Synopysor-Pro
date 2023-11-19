@@ -24,6 +24,7 @@ Streamlit framework, this application is an ideal solution for individuals seeki
 1. **API Key Setup**: Add your OpenAI API key to enable integration with the powerful GPT-3 Turbo API.
 2. **Search and Summarize**: Input your search tag, and Synopysor-Pro will retrieve and summarize the top results from YouTube.
 3. **ChatBot Q/A**: Once the summarized output is ready, engage with the built-in chatbot for interactive question-and-answer sessions.
+4. ***Note***: The application when you provide new set of search items after running an another search item would have a history of the chat but doesn't effect the summary of the new search item results.
 
 
 ## Contributors
