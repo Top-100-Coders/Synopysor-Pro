@@ -1,7 +1,12 @@
-# Synopysor-Pro
+![image](https://github.com/suryan-s/Synopysor-Pro/assets/76394506/43bb7547-0616-48d5-b538-0d99bdbfc7a0)# Synopysor-Pro
 Synopysor-Pro is a Python information retrieval and summarization application designed to streamline the process of 
 extracting key insights from YouTube video content. Leveraging OpenAI's powerful GPT-3 Turbo API and the user-friendly 
 Streamlit framework, this application is an ideal solution for individuals seeking quick and efficient information retrieval.
+
+![image](https://github.com/suryan-s/Synopysor-Pro/assets/76394506/e572ca45-c754-4ccb-a5d5-516bfaaacae5)
+
+![image](https://github.com/suryan-s/Synopysor-Pro/assets/76394506/b360d732-a401-4770-acbc-146519565727)
+
 
 ## Working
 1. **YouTube Video Summarization**: Synopysor-Pro focuses on summarizing YouTube videos, providing users with concise and informative summaries.
