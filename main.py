@@ -1,14 +1,15 @@
 import streamlit as st
-import streamlit_scrollable_textbox as sst
 
-from utils import get_topic_data, get_yt_transcript, request_summary_from_gpt3, request_qa_from_gpt3, reset_session
+from utils import get_topic_data, get_yt_transcript, request_summary_from_gpt3, request_qa_from_gpt3
 
 if 'my_api' not in st.session_state:
-    st.session_state.my_api = None
+    st.session_state.my_api_key = None
 if 'my_topic' not in st.session_state:
     st.session_state.my_topic = None
+if 'my_previous_topic' not in st.session_state:
+    st.session_state.my_previous_topic = ''
 if 'my_prompt' not in st.session_state:
-    st.session_state.my_prompt = None
+    st.session_state.my_prompt = ''
 if 'my_summary' not in st.session_state:
     st.session_state.my_summary = None
 if 'my_thumbnails' not in st.session_state:
@@ -18,12 +19,18 @@ if 'my_content_ids' not in st.session_state:
 if 'my_raw_summary' not in st.session_state:
     st.session_state.my_raw_summary = []
 
-
 st.markdown("<h1 style='text-align: center; color: red;'>Synopysor-Pro</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center; color: black;'>Content summarization tool</h4>", unsafe_allow_html=True)
 st.divider()
 
 with st.sidebar:
+    with st.container():
+        api_key = st.text_input(
+            "Enter your OpenAI API",
+            type="password")
+        if api_key:
+            st.session_state.my_api_key = api_key
+
     st.markdown("This is a tool to help you summarise the content of a video with ease")
     st.markdown("1. Please enter the topic you want to search for and click on the button to obtain the contents")
     st.markdown("2. Once you have obtained the contents, click on the button to start the extraction process")
@@ -32,53 +39,62 @@ with st.sidebar:
     st.markdown(
         "5. Please note that the bot will only be able to answer questions related to the topic you have searched")
 
-st.subheader("⚙️ Setup")
-api_key = st.text_input("Enter the OpenAI API key: ")
-st.session_state.my_api_key = api_key
-
-if st.session_state.my_api_key is not None and st.session_state.my_api_key != '':
-    topic_input = st.text_input("Enter the topic you want to search the content for: ")
-    st.session_state.my_topic = topic_input
-    if st.session_state.my_topic is not None and st.session_state.my_topic != '':
-        wcol1, wcol2 = st.columns(2)
-        wcol2 = st.slider("Number of contents to be obtained", min_value=2, max_value=50, value=4, step=1)
-        wcol1 = st.button("Obtain contents", type="primary")
-        # reset_session(st)
-        if wcol1:
-            with st.spinner("Searching for the contents..."):
-                results = get_topic_data(st.session_state.my_topic, 4 if wcol2 is None else wcol2)
+# topic_input = st.text_input("Enter the topic you want to search the content for: ")
+st.session_state.my_topic = st.text_input("Enter the topic you want to search the content for: ")
+if st.session_state.my_topic is not None and st.session_state.my_topic != '':
+    if st.session_state.my_api_key is None or st.session_state.my_api_key == '':
+        st.error("Please enter your OpenAI API key")
+        st.stop()
+    if st.session_state.my_previous_topic != st.session_state.my_topic:
+        st.session_state.my_previous_topic = st.session_state.my_topic
+        st.session_state.my_content_ids = []
+        st.session_state.my_thumbnails = []
+        st.session_state.my_raw_summary = []
+        st.session_state.my_summary = None
+        st.session_state.my_prompt = ''
+    wcol2 = st.slider("Number of contents to be obtained", min_value=1, max_value=50, value=2, step=1)
+    if wcol2:
+        with st.spinner("Searching for the contents..."):
+            results = get_topic_data(st.session_state.my_topic, wcol2)
             if results.__len__() == 0:
                 st.error("No results found")
                 st.stop()
-            st.session_state.my_content_ids = [result['id'] for result in results]
-            st.session_state.my_thumbnails = [result['thumbnails'] for result in results]
-            colm1, colm2 = st.columns(2)
-            colm3, colm4 = st.columns(2)
-            img_grid = [colm1, colm2, colm3, colm4]
-            if st.session_state.my_thumbnails.__len__() <= 2:
+            st.success("Contents obtained successfully")
+        st.session_state.my_content_ids = [result['id'] for result in results]
+        st.session_state.my_thumbnails = [result['thumbnails'] for result in results]
+
+        colm1, colm2 = st.columns(2)
+        colm3, colm4 = st.columns(2)
+        img_grid = [colm1, colm2, colm3, colm4]
+
+        if st.session_state.my_thumbnails.__len__() <= 2:
+            if st.session_state.my_thumbnails.__len__() == 1:
+                img_grid = [colm1]
+            else:
                 img_grid = [colm1, colm2]
+        if st.session_state.my_thumbnails.__len__() > 0:
             for col in img_grid:
                 col.image(st.session_state.my_thumbnails[img_grid.index(col)])
 
 if (st.session_state.my_content_ids is not None
-        and st.session_state.my_content_ids != []
-        and st.session_state.my_summary is None):
-    st.divider()
-    st.subheader("📋 Summarize")
-
+        and st.session_state.my_content_ids != []):
     with st.spinner("Obtaining transcriptions..."):
         transcript_datas = get_yt_transcript(st.session_state.my_content_ids)
-    with st.spinner("Converting transcripts to summaries..."):
-        for transcript_data in transcript_datas:
-            st.session_state.my_raw_summary.append(
-                request_summary_from_gpt3(st.session_state.my_api_key, st.session_state.my_topic, transcript_data,
-                                          1))
-    sst.scrollableTextbox(''.join(st.session_state.my_raw_summary), height=400)
-
-    with st.spinner("Finalising summarised data..."):
-        st.session_state.my_summary = request_summary_from_gpt3(st.session_state.my_api_key, st.session_state.my_topic,
-                                                  ''.join(st.session_state.my_raw_summary), 2)
-    # st.session_state.my_summary = final_summary
+        if transcript_datas.__len__() == 0:
+            st.error("No transcripts found")
+            st.stop()
+        st.success("Transcripts obtained successfully")
+    if st.button("Summarize", type="primary"):
+        with st.spinner("Converting transcripts to summaries..."):
+            for transcript_data in transcript_datas:
+                st.session_state.my_raw_summary.append(
+                    request_summary_from_gpt3(st.session_state.my_api_key, st.session_state.my_topic,
+                                              transcript_data,
+                                              1))
+            st.session_state.my_summary = request_summary_from_gpt3(st.session_state.my_api_key,
+                                                                    st.session_state.my_topic,
+                                                                    ''.join(st.session_state.my_raw_summary), 2)
+            # st.success("Done")
 
 if st.session_state.my_summary is not None and st.session_state.my_summary != '':
     st.divider()

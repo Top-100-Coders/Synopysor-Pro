@@ -1,29 +1,32 @@
 import operator
-import time
+
+import requests
+import streamlit as st
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
+from bs4 import BeautifulSoup
 
 from openai import OpenAI
 from youtube_search import YoutubeSearch
 from youtube_transcript_api import YouTubeTranscriptApi
 
 
-def reset_session(st):
+def get_title(url):
     """
-    Function to reset the session state
-    :param st:
+    Function to get the title of the YouTube video
+    :param url:
     :return:
     """
-    st.session_state.my_content_ids = []
-    st.session_state.my_thumbnails = []
-    st.session_state.my_raw_summary = []
-    st.session_state.my_summary = None
-    st.session_state.my_prompt = None
+    r = requests.get(url)
+    soup = BeautifulSoup(r.text, features="lxml")
+
+    link = soup.find_all(name="title")[0]
+    title = link.text.replace(" - YouTube", "")
+    return title
 
 
-# @timeit
-# @lru_cache(maxsize=None)
+@st.cache_resource
 def get_transcript_for_video(video_id):
     """
     Function to get transcript from YouTube
@@ -42,6 +45,7 @@ def get_transcript_for_video(video_id):
 
 
 # @lru_cache(maxsize=None)
+@st.cache_resource
 def get_yt_transcript(video_ids):
     """
     Function to get transcripts from YouTube by multiprocessing for faster processing
@@ -58,19 +62,27 @@ def get_yt_transcript(video_ids):
     return content
 
 
+@st.cache_data
 def get_topic_data(topic: str, quantity: int = 2):
     """
     This function is to get the topic-based details using the YouTube search function
     :topic: str
     :return:
     """
+    if topic.startswith('https://www.youtube.com/watch?v='):
+        topic = get_title(topic)
+        if topic != '':
+            return YoutubeSearch(topic, max_results=1).to_dict()
+        else:
+            st.error("No results found")
+
     results = YoutubeSearch(topic, max_results=50).to_dict()
     for result in results:
-        result['views'] = int(result['views'].replace(' views', '').replace(',', ''))
+        result['views'] = int(result['views'].replace(' views', '').replace(',', '')) if result['views'] else 0
         result['thumbnails'] = result['thumbnails'][1] if len(result['thumbnails']) > 1 else result['thumbnails'][0]
         try:
-            result['duration'] = int(result['duration'].split(':')[0])
-        except ValueError:
+            result['duration'] = int(result['duration'].split(':')[0]) if result['duration'] else 0
+        except ValueError or AttributeError:
             result['duration'] = 0
         del result['long_desc']
         del result['channel']
@@ -100,6 +112,7 @@ def multiproc_summarizer(data):
     return content
 
 
+# @st.cache_data
 def request_summary_from_gpt3(key_, topic, content, stage):
     """
     Function to request summary from GPT-3
@@ -162,6 +175,7 @@ def request_summary_from_gpt3(key_, topic, content, stage):
         return ''
 
 
+# @st.cache_data
 def request_qa_from_gpt3(key_, topic, summary, prompt):
     """
     Function to request summary from GPT-3
