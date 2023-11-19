@@ -27,6 +27,7 @@ Try it out here: https://synopysor-pro.streamlit.app/
 2. **Search and Summarize**: Input your search tag, and Synopysor-Pro will retrieve and summarize the top results from YouTube.
 3. **ChatBot Q/A**: Once the summarized output is ready, engage with the built-in chatbot for interactive question-and-answer sessions.
 4. ***Note***: The application when you provide new set of search items after running an another search item would have a history of the chat but doesn't effect the summary of the new search item results.
+5. ***Note***: For searching only a particular video, you could provide the exact name of the video and by setting the contenets to be obtained to 1
 
 
 ## Contributors
