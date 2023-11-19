@@ -1,5 +1,6 @@
 import operator
 
+import openai
 import requests
 import streamlit as st
 from concurrent.futures import ProcessPoolExecutor
@@ -171,6 +172,9 @@ def request_summary_from_gpt3(key_, topic, content, stage):
             model="gpt-3.5-turbo",
             )
         return str(chat_completion.choices[0].message.content)
+    except openai.AuthenticationError:
+        st.error("OpenAI API key is invalid")
+        st.stop()
     except Exception:
         return ''
 
@@ -210,5 +214,8 @@ def request_qa_from_gpt3(key_, topic, summary, prompt):
             model="gpt-3.5-turbo"
             )
         return str(chat_completion.choices[0].message.content)
+    except openai.AuthenticationError:
+        st.error("OpenAI API key is invalid")
+        st.stop()
     except Exception:
         return ''
