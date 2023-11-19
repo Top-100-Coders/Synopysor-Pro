@@ -5,3 +5,8 @@ requests~=2.31.0
 streamlit-scrollable-textbox
 youtube-search
 youtube-transcript-api
+torch~=2.1.1
+transformers~=4.35.2
+beautifulsoup4~=4.12.2
+uvicorn~=0.24.0.post1
+fastapi~=0.104.1
